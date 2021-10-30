@@ -1,0 +1,21 @@
+TITLE: Just some notes about the project.
+
+
+NuSMV modules that will be used:
+- init : contains all the functions needed to initialize and close NuSMV. These functions need to be used before any other access to PyNuSMV
+- glob : provides functionalities to read and build a model from an SMV source file
+- fsm  : contains all the FSM-related structures like BDD-represented FSM, BDD-represented transition relation, 
+         BDD encoding and symbols table (except for method reachable_states)
+- prop : defines structures related to propositions of a model; this includes CTL specifications
+- dd   : provides BDD-related structures like generic BDD, lists of BDDs and BDD-represented states, input values and cubes
+
+
+INIT MODULE: 
+ - init_nusmv : Initialize NuSMV. To be called once before using any other function of pynusmv.
+ - deinit_nusmv : Quit NuSMV. To be called once after using pynusmv. 
+
+
+GLOB MODULE:
+Provide some functions to access global NuSMV functionalities. These functions are used to feed an SMV model to NuSMV 
+and build the different structures representing the model, like flattening the model, building its BDD encoding and getting the BDD-encoded FSM.
+
