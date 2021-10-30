@@ -25,6 +25,8 @@ def check_explain_inv_spec(spec):
     and ennding with a state. States and inputs are represented by dictionaries
     where keys are state and inputs variable of the loaded SMV model, and values
     are their value.
+
+    My change to be deleted
     """
     ltlspec = pynusmv.prop.g(spec)
     res, trace = pynusmv.mc.check_explain_ltl_spec(ltlspec)
