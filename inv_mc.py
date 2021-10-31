@@ -27,31 +27,23 @@ def check_explain_inv_spec(spec):
     are their value.
 
     """
+    """
     print (spec)
     ltlspec = pynusmv.prop.g(spec)
     res, trace = pynusmv.mc.check_explain_ltl_spec(ltlspec)
     return res, trace
-
-def check_explain_inv_spec (spec):
+    
     """
-    The function to be implmented for the assignment.
+    print (spec)
+    
+    #Recuperare gli stati iniziali
 
-    1 - the function checks if spec is an invariant of the loaded SMV model or not, that is, whether all the reachable states of the model satisfy spec or not.
-
-    2 - the function must return an explanation for why the model does not satisfy spec, if it is the case;
-
-    3 - the return value is a tuple where the first element is True and the second element is None if the invariant is true. 
-        When the invariant is not verified, the first element is False and the second element is an execution of the SMV model that violates spec;
-
-    4 - the execution is a tuple of alternating states and inputs, starting and ending with a state. 
-        States and inputs are represented by dictionaries where keys are state and inputs variable of the loaded SMV model, and values are their value.
-
-    """
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage:", sys.argv[0], "filename.smv")
         sys.exit(1)
+
     pynusmv.init.init_nusmv()
     filename = sys.argv[1]
     pynusmv.glob.load(filename)

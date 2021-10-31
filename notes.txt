@@ -1,5 +1,10 @@
 TITLE: Just some notes about the project.
 
+GLOSSARY:
+ - FSM : Finite State Machine
+ - CTL : Computation Tree Logic
+ - LTL : Linear Temporal Logic
+
 
 NuSMV modules that will be used:
 - init : contains all the functions needed to initialize and close NuSMV. These functions need to be used before any other access to PyNuSMV
@@ -19,3 +24,31 @@ GLOB MODULE:
 Provide some functions to access global NuSMV functionalities. These functions are used to feed an SMV model to NuSMV 
 and build the different structures representing the model, like flattening the model, building its BDD encoding and getting the BDD-encoded FSM.
 
+
+FMS MODULE:
+Provides some functionalities about FSMs represented and stored by NuSMV.
+The classes of interest are:
+- BddTrans: Python class for transition relation encoded with BDDs. 
+    A BddTrans represents a transition relation and provides pre and post
+    operations on BDDs, possibly restricted to given actions.
+
+- BddFsm: Python class for FSM structure, encoded into BDDs.
+    The BddFsm provides some functionalities on the FSM: getting initial and
+    reachable states as a BDD, getting or replacing the transition relation,
+    getting fairness, state and inputs constraints, getting pre and post images
+    of BDDs, possibly through particular actions, picking and counting states
+    and actions of given BDDs.
+
+
+PROP MODULE: 
+Contains classes and functions dealing with properties and specifications of models.
+
+
+DD MODULE:
+Provides some BDD-related structures:
+- BDD: Python class for BDD structure.
+    The BDD represents a BDD in NuSMV and provides a set of operations on this
+    BDD
+- BDDList: A BDD list stored as NuSMV nodes.
+    The BDDList class implements a NuSMV nodes-based BDD list and can be used
+    as any Python list.
