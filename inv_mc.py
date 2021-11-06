@@ -1,5 +1,4 @@
 import sys
-sys.path.append('/home/makaja/Documents/Programs/pynusmv-master/pynusmv')
 import pynusmv
 
 def spec_to_bdd(model, spec):
@@ -27,17 +26,10 @@ def check_explain_inv_spec(spec):
     are their value.
 
     """
-    """
-    print (spec)
     ltlspec = pynusmv.prop.g(spec)
     res, trace = pynusmv.mc.check_explain_ltl_spec(ltlspec)
     return res, trace
     
-    """
-    print (spec)
-    
-    #Recuperare gli stati iniziali
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
