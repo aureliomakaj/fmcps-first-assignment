@@ -1,6 +1,7 @@
 import sys
+from typing import final
 import pynusmv
-from pynusmv.dd import BDD
+from pynusmv.dd import BDD, Inputs, State
 from pynusmv.fsm import BddFsm
 from pynusmv.prop import Spec
 
@@ -27,11 +28,18 @@ def check_explain_inv_spec(spec):
     reach = [fsm.init]
     init = [fsm.init]
     execution = []
+    intersection = []
     goOn = True
+    lastState = None
     while len(init) > 0 & goOn:
         toAnalize = init.pop()
         if toAnalize.intersected(~bdd_spec):
             intersection = toAnalize.intersection(~bdd_spec)
+            lastState = toAnalize
+            """print("---")
+            print_states(fsm.pick_all_states(intersection))
+            print("---")
+            print_states(fsm.pick_all_states(toAnalize))"""
             goOn = False
         else:
             next = fsm.post(toAnalize)
@@ -39,7 +47,56 @@ def check_explain_inv_spec(spec):
                 init.append(next)
                 reach.append(next)
 
+    if not goOn :
+        res = find_path(fsm, fsm.pick_one_state(intersection))
+        i = 0
+        for elem in res:
+            print("----")
+            if i % 2 == 0:
+                print_states(fsm.pick_all_states(elem))
+            else: 
+                if(elem.is_false()):
+                    print("{}")
+                else:
+                    print_states(fsm.pick_all_inputs(elem))
+            i += 1
+
     return goOn, execution
+
+def find_path(bddFsm: BddFsm, final_state: State) :
+    inputs = bddFsm.pick_all_inputs(final_state)
+    pre = bddFsm.pre(final_state)
+    print("---")
+    print_states(bddFsm.pick_all_states(bddFsm.pre(pre)))
+    """hasInputVariables = len(bddFsm.bddEnc.inputsVars) > 0
+    found = False
+    paths = [[bddFsm.init]]
+    inspected = [bddFsm.init]
+    while not found:
+        tmp = []
+        for path in paths:
+            bdd = path[-1]
+            if bdd.equal(final_states):
+                return path
+                
+            if hasInputVariables:
+                inputs = bddFsm.pick_all_inputs(bdd)
+                for input in inputs:
+                    post = bddFsm.post(bdd, input)
+                    if not inList(inspected, post):
+                        inspected.append(post)
+                        path.append(input)
+                        path.append(post)
+                        tmp.append(path)
+            else:
+                post = bddFsm.post(bdd)
+                if not inList(inspected, post):
+                    inspected.append(post)
+                    path.append(BDD.false())
+                    path.append(post)
+                    tmp.append(path)
+        paths = tmp
+    return []"""
 
 def spec_to_bdd(model: BddFsm, spec: Spec) -> BDD:
     """
@@ -48,7 +105,6 @@ def spec_to_bdd(model: BddFsm, spec: Spec) -> BDD:
     bddspec = pynusmv.mc.eval_ctl_spec(model, spec)
     return bddspec
 
-    
     
 def open_model():
     """
@@ -72,11 +128,6 @@ def get_model_bddFsm() -> BddFsm :
     """
     return pynusmv.glob.prop_database().master.bddFsm
 
-def isEmpty(fsm: BddFsm, bdd: BDD) -> bool : 
-    return len(fsm.pick_all_states(bdd)) == 0
-
-def intersect() -> BDD:
-    pass
 
 def print_states(states):
     for state in states:
@@ -99,8 +150,8 @@ if __name__ == "__main__":
             if(res == my_res):
                 print("Same result, that is ", res)
                 if not res:
-                    print("My trace: ")
-                    print_states(my_trace)
+                    """print("My trace: ")
+                    print_states(my_trace)"""
                     print("Other trace: ")
                     print(trace)
             else:
