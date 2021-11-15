@@ -4,6 +4,7 @@ import pynusmv
 from pynusmv.dd import BDD, Inputs, State
 from pynusmv.fsm import BddFsm
 from pynusmv.prop import Spec
+from pynusmv_lower_interface.nusmv.compile.compile import PredicateNormaliser_get_predicates_only
 
 def check_explain_inv_spec(spec):
     """
@@ -27,76 +28,33 @@ def check_explain_inv_spec(spec):
 
     reach = [fsm.init]
     init = [fsm.init]
-    execution = []
-    intersection = []
-    goOn = True
-    lastState = None
-    while len(init) > 0 & goOn:
+    execution = [fsm.init]
+    found = False
+    while len(init) > 0 & (not found):
         toAnalize = init.pop()
-        if toAnalize.intersected(~bdd_spec):
-            intersection = toAnalize.intersection(~bdd_spec)
-            lastState = toAnalize
-            """print("---")
-            print_states(fsm.pick_all_states(intersection))
-            print("---")
-            print_states(fsm.pick_all_states(toAnalize))"""
-            goOn = False
-        else:
+        found = toAnalize.intersected(~bdd_spec)
+        if (not found):
             next = fsm.post(toAnalize)
             if not inList(reach, next):
                 init.append(next)
                 reach.append(next)
-
-    if not goOn :
-        res = find_path(fsm, fsm.pick_one_state(intersection))
+                execution.append(next - toAnalize)
+    
+    trace = []
+    if found :
         i = 0
-        for elem in res:
-            print("----")
-            if i % 2 == 0:
-                print_states(fsm.pick_all_states(elem))
-            else: 
-                if(elem.is_false()):
-                    print("{}")
-                else:
-                    print_states(fsm.pick_all_inputs(elem))
-            i += 1
-
-    return goOn, execution
-
-def find_path(bddFsm: BddFsm, final_state: State) :
-    inputs = bddFsm.pick_all_inputs(final_state)
-    pre = bddFsm.pre(final_state)
-    print("---")
-    print_states(bddFsm.pick_all_states(bddFsm.pre(pre)))
-    """hasInputVariables = len(bddFsm.bddEnc.inputsVars) > 0
-    found = False
-    paths = [[bddFsm.init]]
-    inspected = [bddFsm.init]
-    while not found:
-        tmp = []
-        for path in paths:
-            bdd = path[-1]
-            if bdd.equal(final_states):
-                return path
-                
-            if hasInputVariables:
-                inputs = bddFsm.pick_all_inputs(bdd)
-                for input in inputs:
-                    post = bddFsm.post(bdd, input)
-                    if not inList(inspected, post):
-                        inspected.append(post)
-                        path.append(input)
-                        path.append(post)
-                        tmp.append(path)
+        j = i + 1 
+        while i < len(execution) - 1:
+            trace.append(fsm.pick_one_state(execution[i]).get_str_values())
+            if(len(fsm.bddEnc.inputsVars) > 0) :
+                trace.append(fsm.pick_one_inputs(fsm.get_inputs_between_states(execution[i], execution[j])).get_str_values())
             else:
-                post = bddFsm.post(bdd)
-                if not inList(inspected, post):
-                    inspected.append(post)
-                    path.append(BDD.false())
-                    path.append(post)
-                    tmp.append(path)
-        paths = tmp
-    return []"""
+                trace.append({})
+            i += 1
+            j += 1
+        trace.append(fsm.pick_one_state(execution[i]).get_str_values())
+
+    return not found, tuple(trace)
 
 def spec_to_bdd(model: BddFsm, spec: Spec) -> BDD:
     """
@@ -150,8 +108,8 @@ if __name__ == "__main__":
             if(res == my_res):
                 print("Same result, that is ", res)
                 if not res:
-                    """print("My trace: ")
-                    print_states(my_trace)"""
+                    print("My trace: ")
+                    print(my_trace)
                     print("Other trace: ")
                     print(trace)
             else:
