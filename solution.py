@@ -1,10 +1,8 @@
 import sys
-from typing import final
 import pynusmv
-from pynusmv.dd import BDD, Inputs, State
+from pynusmv.dd import BDD
 from pynusmv.fsm import BddFsm
 from pynusmv.prop import Spec
-from pynusmv_lower_interface.nusmv.compile.compile import PredicateNormaliser_get_predicates_only
 
 def check_explain_inv_spec(spec):
     """
@@ -23,38 +21,64 @@ def check_explain_inv_spec(spec):
     where keys are state and inputs variable of the loaded SMV model, and values
     are their value.
     """
+    #Get the Finite State Machine of the model
     fsm = get_model_bddFsm()
+    #Get the BDD of our property
     bdd_spec = spec_to_bdd(fsm, spec)
-
-    reach = [fsm.init]
-    init = [fsm.init]
-    execution = [fsm.init]
-    found = False
-    while len(init) > 0 & (not found):
-        toAnalize = init.pop()
-        found = toAnalize.intersected(~bdd_spec)
-        if (not found):
-            next = fsm.post(toAnalize)
-            if not inList(reach, next):
-                init.append(next)
-                reach.append(next)
-                execution.append(next - toAnalize)
-    
+    #Variable used to save the counter-example, if the property is not satisfied.
     trace = []
-    if found :
-        i = 0
-        j = i + 1 
-        while i < len(execution) - 1:
-            trace.append(fsm.pick_one_state(execution[i]).get_str_values())
-            if(len(fsm.bddEnc.inputsVars) > 0) :
-                trace.append(fsm.pick_one_inputs(fsm.get_inputs_between_states(execution[i], execution[j])).get_str_values())
-            else:
-                trace.append({})
-            i += 1
-            j += 1
-        trace.append(fsm.pick_one_state(execution[i]).get_str_values())
 
-    return not found, tuple(trace)
+    #BDD representing all the states reached
+    reach = fsm.init
+    #BDD reprenting the current region
+    next = fsm.init
+    #We save the BDDs of the 'next' BDDs encountered in the searching
+    execution = [next]
+    #If the model satisfies the property or not
+    satisfy = True
+    """
+        We iterate until there are no more states to look 
+        and we haven't found a state that violates our property
+    """
+    while (not next.is_false()) & satisfy:
+        """
+            If the intersection of the states we are currently looking at and 
+            the negation of the property is not empty, this means that we have found
+            at least one state that violates our property. Our search finish here.
+        """
+        found = next.intersected(~bdd_spec)
+        #If there are not violating states
+        if satisfy: 
+            #Update the current region with the next one, removing the ones we already visited
+            next = fsm.post(next) - reach
+            #Update the states we visited
+            reach = reach + next
+            #Save the BDD of the region
+            execution.append(next)
+
+    
+    if not satisfy: 
+        has_inputs = len(fsm.bddEnc.inputsVars) > 0
+        last = fsm.pick_one_state(next.intersection(~bdd_spec))
+        trace.append(last.get_str_values())
+        next = last
+        last = fsm.pre(last)
+        i = len(execution) - 2
+        while i >= 0:
+            intersect = execution[i].intersection(last)
+            if has_inputs:
+                inputs = fsm.get_inputs_between_states(intersect, next)
+                trace.insert(0, fsm.pick_one_inputs(inputs).get_str_values())
+            else:
+                trace.insert(0, {})
+            trace.insert(0, fsm.pick_one_state(intersect).get_str_values())
+            next = last
+            last = fsm.pre(intersect)
+            i -= 1
+
+
+    return satisfy, tuple(trace)
+
 
 def spec_to_bdd(model: BddFsm, spec: Spec) -> BDD:
     """
