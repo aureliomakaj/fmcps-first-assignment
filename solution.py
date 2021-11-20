@@ -26,59 +26,87 @@ def check_explain_inv_spec(spec):
     #Get the BDD of our property
     bdd_spec = spec_to_bdd(fsm, spec)
     #Variable used to save the counter-example, if the property is not satisfied.
-    trace = []
+    counter_example = []
 
-    #BDD representing all the states reached
+    #Variable used to save the BDD representing all the states reached
     reach = fsm.init
-    #BDD reprenting the current region
+    #Variable used to save the BDD reprenting the current region
     next = fsm.init
-    #We save the BDDs of the 'next' BDDs encountered in the searching
+    #We save the BDDs of post operations. This will be used for the counter-example, if it is needed
     execution = [next]
-    #If the model satisfies the property or not
+    #Variable used to tell if the model satisfies the property or not
     satisfy = True
     """
-        We iterate until there are no more states to look 
-        and we haven't found a state that violates our property
+        We iterate until there are no more new states to look 
+        or we have found a state that violates our property
     """
     while (not next.is_false()) & satisfy:
         """
-            If the intersection of the states we are currently looking at and 
+            If the intersection of the states we are currently looking at with 
             the negation of the property is not empty, this means that we have found
             at least one state that violates our property. Our search finish here.
         """
-        found = next.intersected(~bdd_spec)
-        #If there are not violating states
+        satisfy = next.intersected(~bdd_spec) == False
+        #If there are no violating states
         if satisfy: 
             #Update the current region with the next one, removing the ones we already visited
             next = fsm.post(next) - reach
-            #Update the states we visited
+            #Update BDD that represents the states we visited
             reach = reach + next
-            #Save the BDD of the region
+            #Append the BDD of the region in the least
             execution.append(next)
 
-    
+    #If the property is not satisfied, find a counter-example
     if not satisfy: 
-        has_inputs = len(fsm.bddEnc.inputsVars) > 0
-        last = fsm.pick_one_state(next.intersection(~bdd_spec))
-        trace.append(last.get_str_values())
-        next = last
-        last = fsm.pre(last)
-        i = len(execution) - 2
-        while i >= 0:
-            intersect = execution[i].intersection(last)
-            if has_inputs:
-                inputs = fsm.get_inputs_between_states(intersect, next)
-                trace.insert(0, fsm.pick_one_inputs(inputs).get_str_values())
-            else:
-                trace.insert(0, {})
-            trace.insert(0, fsm.pick_one_state(intersect).get_str_values())
-            next = last
-            last = fsm.pre(intersect)
-            i -= 1
+        counter_example = find_counter_example(fsm, bdd_spec, next, execution)
+
+    return tuple([satisfy, None if satisfy else tuple(counter_example)])
 
 
-    return satisfy, tuple(trace)
+def find_counter_example(fsm: BddFsm, bdd_spec: BDD, last_bdd: BDD, execution: list) -> list:
+    """
+        Given the FSM of the model, the BDD of the property, the region
+        where the property is not satisfied, that is where the negation of the property
+        is satisfied, and a list of all the post operations, compute the counter-example. 
+    """
+    #Store the counter-example
+    counter_example = []
+    """
+        Check if the model has inputs. The functions that works on inputs give an error
+        if the model hasn't input variables.
+    """
+    has_inputs = len(fsm.bddEnc.inputsVars) > 0
+    #We pick a state that doesn't satisfy the property
+    last = fsm.pick_one_state(last_bdd.intersection(~bdd_spec))
+    #We add to our counter_example
+    counter_example.append(last.get_str_values())
+    #Is the current BDD
+    next = last
+    #Last is the BDD of the pre operation
+    last = fsm.pre(next)
+    #We start from the second to last position, given that we already have choose a state for the last position
+    i = len(execution) - 2
+    
+    #While we have not intersected all the BDD of the post-operations
+    while i >= 0:
+        intersect = execution[i].intersection(last)
+        state = fsm.pick_one_state(intersect)
+        if has_inputs:
+            #Get the possible inputs from the current state and the next one
+            #and insert it in the counter_example
+            inputs = fsm.get_inputs_between_states(state, next)
+            counter_example.insert(0, fsm.pick_one_inputs(inputs).get_str_values())
+        else:
+            counter_example.insert(0, {})
+        #Insert the current state
+        counter_example.insert(0, state.get_str_values())
+        #Update the next state with the current one
+        next = state
+        #Find the states that goes into current state
+        last = fsm.pre(next)
+        i -= 1
 
+    return counter_example
 
 def spec_to_bdd(model: BddFsm, spec: Spec) -> BDD:
     """
@@ -110,14 +138,6 @@ def get_model_bddFsm() -> BddFsm :
     """
     return pynusmv.glob.prop_database().master.bddFsm
 
-
-def print_states(states):
-    for state in states:
-        print(state.get_str_values())
-
-def inList(bddList, bdd: BDD):
-    return any(bdd.equal(elem) for elem in bddList)
-
 if __name__ == "__main__":
     open_model()
 
@@ -126,24 +146,12 @@ if __name__ == "__main__":
         spec = prop.expr
         if prop.type == invtype:
             print("Property", spec, "is an INVARSPEC.")
-            my_res, my_trace= check_explain_inv_spec(spec)
-            ltlspec = pynusmv.prop.g(spec)
-            res, trace = pynusmv.mc.check_explain_ltl_spec(ltlspec)
-            if(res == my_res):
-                print("Same result, that is ", res)
-                if not res:
-                    print("My trace: ")
-                    print(my_trace)
-                    print("Other trace: ")
-                    print(trace)
-            else:
-                print("Different result. My: ", my_res, " .... Correct: ", res)
-
-            """if res == True:
+            res, counter_example = check_explain_inv_spec(spec)
+            if res == True:
                 print("Invariant is respected")
             else:
                 print("Invariant is not respected")
-                print(trace)"""
+                print(counter_example)
         else:
             print("Property", spec, "is not an INVARSPEC, skipped.")
 

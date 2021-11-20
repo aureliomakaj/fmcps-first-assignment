@@ -1,0 +1,9 @@
+REPORT FOR ASSIGNMENT 1
+"""
+        By going backward from a state A, we find all the states from where A is reached. 
+        But this is not enough because we can find states that are not encountered 
+        starting from one of the initial state. 
+        Thus, at each step we intersect the region of the pre-operation with the region
+        of the post-operation, to obtain the states that start from an initial state and 
+        goes into A.  
+    """
